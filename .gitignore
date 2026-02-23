@@ -1,0 +1,30 @@
+# Rust
+rust-vrf/target/
+rust-vrf/contract.polkavm
+
+# Solidity compiled artifacts
+*.polkavm
+!rust-vrf/contract.polkavm
+artifacts/
+cache/
+
+# Node
+node_modules/
+
+# Environment
+.env
+.env.local
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Foundry
+out/
+broadcast/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
