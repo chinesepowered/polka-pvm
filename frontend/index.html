@@ -264,7 +264,7 @@
     // Westend Asset Hub network config
     // ==========================================
     const NETWORK = {
-        chainId: "0x190EA781", // 420420481 (Westend Asset Hub)
+        chainId: "0x190F1B45", // 420420421 (Westend Asset Hub)
         chainName: "Westend Asset Hub",
         rpcUrls: ["https://westend-asset-hub-eth-rpc.polkadot.io"],
         nativeCurrency: { name: "Westend", symbol: "WND", decimals: 18 }
@@ -328,8 +328,7 @@
             lotteryContract = new ethers.Contract(lotteryAddr, LOTTERY_ABI, signer);
             ticketPrice = await lotteryContract.ticketPrice();
             const priceWnd = ethers.utils.formatEther(ticketPrice);
-            document.getElementById("buyBtn").querySelector ||
-                (document.getElementById("buyBtn").textContent = `Buy Ticket (${priceWnd} WND)`);
+            document.getElementById("buyBtn").textContent = `Buy Ticket (${priceWnd} WND)`;
             document.getElementById("buyBtn").disabled = false;
             document.getElementById("drawBtn").disabled = false;
             document.getElementById("gasBtn").disabled = false;

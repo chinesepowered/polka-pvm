@@ -39,6 +39,7 @@ polka-pvm/
 │   └── deploy.sh                 # One-click deployment script
 ├── frontend/
 │   └── index.html                # Simple dApp (MetaMask + ethers.js)
+├── package.json                  # Pins solc version for revive compat
 └── README.md
 ```
 
@@ -49,7 +50,7 @@ polka-pvm/
 - **Rust** (nightly): `rustup install nightly`
 - **polkatool**: `cargo install polkatool`
 - **Foundry** (cast): [getfoundry.sh](https://getfoundry.sh)
-- **Revive compiler**: `npm install -g @parity/revive`
+- **Node.js** (18+): For the Revive Solidity compiler
 - **Testnet WND tokens**: [Westend Faucet](https://faucet.polkadot.io/westend)
 
 ### 1. Set Up Wallet
@@ -63,40 +64,49 @@ export ETH_RPC_URL="https://westend-asset-hub-eth-rpc.polkadot.io"
 cast balance <YOUR_ADDRESS>
 ```
 
-### 2. Build the Rust VRF Contract
+### 2. Install Dependencies & Build
 
 ```bash
-cd rust-vrf
-make
-# -> produces contract.polkavm
+# Install Node dependencies (pins solc to a revive-compatible version)
+npm install
+
+# Build Rust VRF contract
+cd rust-vrf && make && cd ..
+# -> produces rust-vrf/contract.polkavm
+
+# Compile Solidity contract
+npm run build:sol
+# -> produces contracts_PVMLottery_sol_PVMLottery.polkavm
 ```
 
 ### 3. Deploy to Westend Asset Hub
 
 ```bash
+# Deploy everything with one command:
+./scripts/deploy.sh
+```
+
+Or manually:
+```bash
+export ETH_RPC_URL="https://westend-asset-hub-eth-rpc.polkadot.io"
+
 # Deploy Rust VRF
 RUST_VRF=$(cast send --account dev-account --create \
   "$(xxd -p -c 99999 rust-vrf/contract.polkavm)" \
   --json | jq -r .contractAddress)
 
-echo "Rust VRF: $RUST_VRF"
-
 # Compile and deploy Solidity Lottery
-npx @parity/revive@latest --bin contracts/PVMLottery.sol
+npx @parity/revive --bin contracts/PVMLottery.sol
 
 TICKET_PRICE="10000000000000000"  # 0.01 WND
 ARGS=$(cast abi-encode "constructor(address,uint256)" $RUST_VRF $TICKET_PRICE)
 
 LOTTERY=$(cast send --account dev-account --create \
-  "$(xxd -p -c 99999 PVMLottery_sol_PVMLottery.polkavm)${ARGS:2}" \
+  "$(xxd -p -c 99999 contracts_PVMLottery_sol_PVMLottery.polkavm)${ARGS:2}" \
   --json | jq -r .contractAddress)
 
+echo "Rust VRF: $RUST_VRF"
 echo "Lottery: $LOTTERY"
-```
-
-Or use the all-in-one script:
-```bash
-./scripts/deploy.sh
 ```
 
 ### 4. Interact

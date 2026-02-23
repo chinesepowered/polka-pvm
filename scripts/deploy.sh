@@ -8,7 +8,7 @@ set -e
 # Prerequisites:
 #   - Foundry (cast): https://getfoundry.sh
 #   - polkatool: cargo install polkatool
-#   - revive compiler: npm install -g @parity/revive
+#   - revive compiler: npm install (run from repo root)
 #   - xxd (usually pre-installed)
 #
 # Setup:
@@ -48,8 +48,8 @@ echo ""
 
 # Step 3: Compile Solidity Lottery contract
 echo "[3/4] Compiling Lottery contract with revive (resolc)..."
-npx @parity/revive@latest --bin contracts/PVMLottery.sol
-echo "  -> PVMLottery.polkavm built"
+npx @parity/revive --bin contracts/PVMLottery.sol
+echo "  -> contracts_PVMLottery_sol_PVMLottery.polkavm built"
 echo ""
 
 # Step 4: Deploy Solidity Lottery contract
@@ -57,7 +57,7 @@ echo "[4/4] Deploying Lottery contract..."
 CONSTRUCTOR_ARGS=$(cast abi-encode "constructor(address,uint256)" "$RUST_VRF_ADDRESS" "$TICKET_PRICE")
 LOTTERY_ADDRESS=$(cast send \
     --account "$ACCOUNT" \
-    --create "$(xxd -p -c 99999 PVMLottery_sol_PVMLottery.polkavm)${CONSTRUCTOR_ARGS:2}" \
+    --create "$(xxd -p -c 99999 contracts_PVMLottery_sol_PVMLottery.polkavm)${CONSTRUCTOR_ARGS:2}" \
     --json | jq -r .contractAddress)
 echo "  -> Lottery deployed at: $LOTTERY_ADDRESS"
 echo ""

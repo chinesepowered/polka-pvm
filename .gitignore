@@ -1,15 +1,14 @@
 # Rust
 rust-vrf/target/
-rust-vrf/contract.polkavm
 
-# Solidity compiled artifacts
+# Compiled artifacts
 *.polkavm
-!rust-vrf/contract.polkavm
 artifacts/
 cache/
 
 # Node
 node_modules/
+package-lock.json
 
 # Environment
 .env
