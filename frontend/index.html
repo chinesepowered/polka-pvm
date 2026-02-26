@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PVM Lottery — Rust-Powered Randomness on Polkadot</title>
+    <script src="https://cdn.ethers.io/lib/ethers-5.7.2.umd.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            color: #e0e0e0;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        h1 {
+            text-align: center;
+            font-size: 2.2rem;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(90deg, #e94560, #ff6b9d);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .subtitle {
+            text-align: center;
+            color: #888;
+            margin-bottom: 2rem;
+            font-size: 0.95rem;
+        }
+        .card {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 16px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            backdrop-filter: blur(10px);
+        }
+        .card h2 {
+            font-size: 1.2rem;
+            margin-bottom: 1rem;
+            color: #e94560;
+        }
+        .btn {
+            display: inline-block;
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            color: white;
+        }
+        .btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+        .btn-primary { background: linear-gradient(135deg, #e94560, #c0392b); }
+        .btn-secondary { background: linear-gradient(135deg, #3498db, #2980b9); }
+        .btn-success { background: linear-gradient(135deg, #2ecc71, #27ae60); }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+        .stat {
+            text-align: center;
+            padding: 1rem;
+            background: rgba(255,255,255,0.03);
+            border-radius: 12px;
+        }
+        .stat-value {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: #e94560;
+        }
+        .stat-label {
+            font-size: 0.8rem;
+            color: #888;
+            margin-top: 0.25rem;
+        }
+        .log {
+            background: rgba(0,0,0,0.3);
+            border-radius: 8px;
+            padding: 1rem;
+            max-height: 200px;
+            overflow-y: auto;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.85rem;
+            line-height: 1.6;
+        }
+        .log-entry { margin-bottom: 0.25rem; }
+        .log-entry.success { color: #2ecc71; }
+        .log-entry.error { color: #e74c3c; }
+        .log-entry.info { color: #3498db; }
+        .connected { color: #2ecc71; }
+        .gas-compare {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+        .gas-bar {
+            padding: 0.75rem;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .gas-rust { background: rgba(46,204,113,0.15); border: 1px solid rgba(46,204,113,0.3); }
+        .gas-sol { background: rgba(231,76,60,0.15); border: 1px solid rgba(231,76,60,0.3); }
+        .gas-value { font-size: 1.4rem; font-weight: 700; }
+        .tag {
+            display: inline-block;
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            background: rgba(233,69,96,0.2);
+            color: #e94560;
+            margin-left: 0.5rem;
+        }
+        .address-input {
+            width: 100%;
+            padding: 0.5rem;
+            background: rgba(0,0,0,0.3);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 6px;
+            color: white;
+            font-family: monospace;
+            font-size: 0.85rem;
+            margin-bottom: 0.5rem;
+        }
+        .row { display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap; }
+        footer {
+            text-align: center;
+            padding: 2rem;
+            color: #555;
+            font-size: 0.85rem;
+        }
+        footer a { color: #e94560; text-decoration: none; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>PVM Lottery</h1>
+        <p class="subtitle">
+            Rust-powered random number generation on Polkadot PolkaVM
+            <span class="tag">PVM Track</span>
+        </p>
+
+        <!-- Wallet Connection -->
+        <div class="card">
+            <h2>Wallet</h2>
+            <div class="row">
+                <button id="connectBtn" class="btn btn-primary" onclick="connectWallet()">
+                    Connect MetaMask
+                </button>
+                <span id="walletStatus"></span>
+            </div>
+        </div>
+
+        <!-- Contract Addresses (configurable) -->
+        <div class="card">
+            <h2>Contract Addresses</h2>
+            <label style="font-size:0.85rem;color:#888;">Lottery Contract:</label>
+            <input id="lotteryAddr" class="address-input" placeholder="0x..." value="">
+            <label style="font-size:0.85rem;color:#888;">Rust VRF Contract:</label>
+            <input id="vrfAddr" class="address-input" placeholder="0x..." value="">
+            <button class="btn btn-secondary" onclick="loadContracts()" style="margin-top:0.5rem;">Load Contracts</button>
+        </div>
+
+        <!-- Round Info -->
+        <div class="card">
+            <h2>Current Round</h2>
+            <div class="stats">
+                <div class="stat">
+                    <div class="stat-value" id="roundId">—</div>
+                    <div class="stat-label">Round</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value" id="playerCount">—</div>
+                    <div class="stat-label">Players</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value" id="prizePool">—</div>
+                    <div class="stat-label">Prize Pool (WND)</div>
+                </div>
+            </div>
+            <div class="row">
+                <button class="btn btn-success" onclick="buyTicket()" id="buyBtn" disabled>
+                    Buy Ticket (0.01 WND)
+                </button>
+                <button class="btn btn-primary" onclick="drawWinner()" id="drawBtn" disabled>
+                    Draw Winner (Owner)
+                </button>
+                <button class="btn btn-secondary" onclick="refreshRound()">
+                    Refresh
+                </button>
+            </div>
+        </div>
+
+        <!-- Gas Comparison -->
+        <div class="card">
+            <h2>Gas Comparison: Rust VRF vs Solidity</h2>
+            <p style="color:#888;font-size:0.9rem;margin-bottom:0.75rem;">
+                Compare the gas cost of the same random number generation — one running
+                in Rust on PolkaVM (RISC-V), the other in pure Solidity.
+            </p>
+            <button class="btn btn-secondary" onclick="compareGas()" id="gasBtn" disabled>
+                Run Gas Comparison
+            </button>
+            <div class="gas-compare" id="gasResults" style="display:none;">
+                <div class="gas-bar gas-rust">
+                    <div style="font-size:0.85rem;color:#2ecc71;">Rust (PVM)</div>
+                    <div class="gas-value" id="gasRust">—</div>
+                    <div style="font-size:0.8rem;color:#888;">gas</div>
+                </div>
+                <div class="gas-bar gas-sol">
+                    <div style="font-size:0.85rem;color:#e74c3c;">Solidity</div>
+                    <div class="gas-value" id="gasSol">—</div>
+                    <div style="font-size:0.8rem;color:#888;">gas</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Event Log -->
+        <div class="card">
+            <h2>Event Log</h2>
+            <div class="log" id="log">
+                <div class="log-entry info">Welcome to PVM Lottery. Connect your wallet to begin.</div>
+            </div>
+        </div>
+
+        <footer>
+            Built for the <a href="#">Polkadot Solidity Hackathon 2026</a> — PVM Track
+            <br>Demonstrating Rust &harr; Solidity interop on PolkaVM
+        </footer>
+    </div>
+
+    <script>
+    // ==========================================
+    // Contract ABIs
+    // ==========================================
+    const LOTTERY_ABI = [
+        "function buyTicket() external payable",
+        "function drawWinner() external",
+        "function getCurrentRound() external view returns (uint256, uint256, uint256, bool)",
+        "function getPlayer(uint256 roundId, uint256 index) external view returns (address)",
+        "function getWinner(uint256 roundId) external view returns (address)",
+        "function getRound(uint256 roundId) external view returns (uint256, uint256, address, bool)",
+        "function generateRandomRust(uint256 seed) external view returns (uint256)",
+        "function generateRandomSolidity(uint256 seed) external pure returns (uint256)",
+        "function ticketPrice() external view returns (uint256)",
+        "function owner() external view returns (address)",
+        "event TicketPurchased(uint256 indexed roundId, address indexed player, uint256 ticketIndex)",
+        "event WinnerDrawn(uint256 indexed roundId, address indexed winner, uint256 prize, uint256 randomValue)",
+        "event RoundStarted(uint256 indexed roundId)"
+    ];
+
+    // ==========================================
+    // Westend Asset Hub network config
+    // ==========================================
+    const NETWORK = {
+        chainId: "0x190F1B45", // 420420421 (Westend Asset Hub)
+        chainName: "Westend Asset Hub",
+        rpcUrls: ["https://westend-asset-hub-eth-rpc.polkadot.io"],
+        nativeCurrency: { name: "Westend", symbol: "WND", decimals: 18 }
+    };
+
+    let provider, signer, lotteryContract, ticketPrice;
+
+    // ==========================================
+    // Wallet Connection
+    // ==========================================
+    async function connectWallet() {
+        if (!window.ethereum) {
+            log("MetaMask not detected. Please install it.", "error");
+            return;
+        }
+        try {
+            await window.ethereum.request({ method: "eth_requestAccounts" });
+            provider = new ethers.providers.Web3Provider(window.ethereum);
+            signer = provider.getSigner();
+            const address = await signer.getAddress();
+            const shortAddr = address.slice(0, 6) + "..." + address.slice(-4);
+            document.getElementById("walletStatus").innerHTML =
+                `<span class="connected">${shortAddr}</span>`;
+            document.getElementById("connectBtn").textContent = "Connected";
+            log(`Wallet connected: ${shortAddr}`, "success");
+
+            // Try switching to Westend Asset Hub
+            try {
+                await window.ethereum.request({
+                    method: "wallet_switchEthereumChain",
+                    params: [{ chainId: NETWORK.chainId }]
+                });
+            } catch (switchErr) {
+                if (switchErr.code === 4902) {
+                    await window.ethereum.request({
+                        method: "wallet_addEthereumChain",
+                        params: [NETWORK]
+                    });
+                }
+            }
+        } catch (err) {
+            log("Failed to connect wallet: " + err.message, "error");
+        }
+    }
+
+    // ==========================================
+    // Contract Loading
+    // ==========================================
+    async function loadContracts() {
+        const lotteryAddr = document.getElementById("lotteryAddr").value.trim();
+        if (!lotteryAddr) {
+            log("Please enter the Lottery contract address", "error");
+            return;
+        }
+        if (!signer) {
+            log("Connect your wallet first", "error");
+            return;
+        }
+
+        try {
+            lotteryContract = new ethers.Contract(lotteryAddr, LOTTERY_ABI, signer);
+            ticketPrice = await lotteryContract.ticketPrice();
+            const priceWnd = ethers.utils.formatEther(ticketPrice);
+            document.getElementById("buyBtn").textContent = `Buy Ticket (${priceWnd} WND)`;
+            document.getElementById("buyBtn").disabled = false;
+            document.getElementById("drawBtn").disabled = false;
+            document.getElementById("gasBtn").disabled = false;
+            log(`Lottery contract loaded at ${lotteryAddr}`, "success");
+            await refreshRound();
+        } catch (err) {
+            log("Failed to load contract: " + err.message, "error");
+        }
+    }
+
+    // ==========================================
+    // Round Info
+    // ==========================================
+    async function refreshRound() {
+        if (!lotteryContract) return;
+        try {
+            const [roundId, playerCount, prizePool, drawn] = await lotteryContract.getCurrentRound();
+            document.getElementById("roundId").textContent = roundId.toString();
+            document.getElementById("playerCount").textContent = playerCount.toString();
+            document.getElementById("prizePool").textContent =
+                parseFloat(ethers.utils.formatEther(prizePool)).toFixed(4);
+        } catch (err) {
+            log("Failed to refresh round: " + err.message, "error");
+        }
+    }
+
+    // ==========================================
+    // Buy Ticket
+    // ==========================================
+    async function buyTicket() {
+        if (!lotteryContract || !ticketPrice) return;
+        try {
+            log("Buying ticket...", "info");
+            const tx = await lotteryContract.buyTicket({ value: ticketPrice });
+            log(`TX submitted: ${tx.hash}`, "info");
+            const receipt = await tx.wait();
+            log(`Ticket purchased! Gas used: ${receipt.gasUsed.toString()}`, "success");
+            await refreshRound();
+        } catch (err) {
+            log("Failed to buy ticket: " + err.message, "error");
+        }
+    }
+
+    // ==========================================
+    // Draw Winner
+    // ==========================================
+    async function drawWinner() {
+        if (!lotteryContract) return;
+        try {
+            log("Drawing winner using Rust VRF...", "info");
+            const tx = await lotteryContract.drawWinner();
+            log(`TX submitted: ${tx.hash}`, "info");
+            const receipt = await tx.wait();
+            // Parse WinnerDrawn event
+            const iface = new ethers.utils.Interface(LOTTERY_ABI);
+            for (const eventLog of receipt.logs) {
+                try {
+                    const parsed = iface.parseLog(eventLog);
+                    if (parsed.name === "WinnerDrawn") {
+                        const winner = parsed.args.winner;
+                        const prize = ethers.utils.formatEther(parsed.args.prize);
+                        log(`Winner: ${winner} — Prize: ${prize} WND`, "success");
+                    }
+                } catch (_) {}
+            }
+            log(`Draw complete! Gas used: ${receipt.gasUsed.toString()}`, "success");
+            await refreshRound();
+        } catch (err) {
+            log("Failed to draw winner: " + err.message, "error");
+        }
+    }
+
+    // ==========================================
+    // Gas Comparison
+    // ==========================================
+    async function compareGas() {
+        if (!lotteryContract) return;
+        try {
+            log("Estimating gas for Rust VRF vs Solidity...", "info");
+            const seed = 42;
+
+            const [gasRust, gasSol] = await Promise.all([
+                lotteryContract.estimateGas.generateRandomRust(seed),
+                lotteryContract.estimateGas.generateRandomSolidity(seed)
+            ]);
+
+            document.getElementById("gasRust").textContent = gasRust.toString();
+            document.getElementById("gasSol").textContent = gasSol.toString();
+            document.getElementById("gasResults").style.display = "grid";
+
+            const savings = ((1 - gasRust.toNumber() / gasSol.toNumber()) * 100).toFixed(1);
+            if (savings > 0) {
+                log(`Rust VRF uses ${savings}% less gas than Solidity!`, "success");
+            } else {
+                log(`Gas comparison: Rust=${gasRust}, Solidity=${gasSol}`, "info");
+            }
+        } catch (err) {
+            log("Gas estimation failed: " + err.message, "error");
+        }
+    }
+
+    // ==========================================
+    // Logging
+    // ==========================================
+    function log(msg, type = "info") {
+        const logDiv = document.getElementById("log");
+        const entry = document.createElement("div");
+        entry.className = `log-entry ${type}`;
+        const time = new Date().toLocaleTimeString();
+        entry.textContent = `[${time}] ${msg}`;
+        logDiv.appendChild(entry);
+        logDiv.scrollTop = logDiv.scrollHeight;
+    }
+    </script>
+</body>
+</html>
