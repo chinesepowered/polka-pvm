@@ -35,103 +35,40 @@ polka-pvm/
 │   └── src/main.rs               # VRF implementation
 ├── contracts/
 │   └── PVMLottery.sol            # Solidity lottery contract
+├── build/                       # Pre-built binaries (no toolchain needed)
+│   ├── vrf.polkavm              # Rust VRF contract (1 KB)
+│   └── PVMLottery.polkavm      # Solidity lottery contract (44 KB)
 ├── scripts/
-│   └── deploy.sh                 # One-click deployment script
+│   └── deploy.sh                # One-click deployment script
 ├── frontend/
-│   └── index.html                # Simple dApp (MetaMask + ethers.js)
-├── package.json                  # Pins solc version for revive compat
+│   └── index.html               # Simple dApp (MetaMask + ethers.js)
+├── package.json                 # Pins solc version for revive compat
+├── DEPLOY.md                    # Step-by-step deploy & demo guide
 └── README.md
 ```
 
 ## Quick Start
 
-### Prerequisites
+Pre-built contract binaries are included in `build/` — no Rust toolchain needed.
 
-- **Rust** (nightly): `rustup install nightly`
-- **polkatool**: `cargo install polkatool`
-- **Foundry** (cast): [getfoundry.sh](https://getfoundry.sh)
-- **Node.js** (18+): For the Revive Solidity compiler
-- **Testnet WND tokens**: [Westend Faucet](https://faucet.polkadot.io/westend)
+See **[DEPLOY.md](DEPLOY.md)** for the full step-by-step guide (with Windows instructions).
 
-### 1. Set Up Wallet
+### TL;DR (macOS/Linux)
 
 ```bash
-# Import your dev account into Foundry
+# 1. Install Foundry
+curl -L https://foundry.paradigm.xyz | bash && foundryup
+
+# 2. Set up wallet & fund it
 cast wallet import dev-account --private-key <YOUR_PRIVATE_KEY>
+# Get WND from https://faucet.polkadot.io/westend
 
-# Verify balance
-export ETH_RPC_URL="https://westend-asset-hub-eth-rpc.polkadot.io"
-cast balance <YOUR_ADDRESS>
-```
-
-### 2. Install Dependencies & Build
-
-```bash
-# Install Node dependencies (pins solc to a revive-compatible version)
-npm install
-
-# Build Rust VRF contract
-cd rust-vrf && make && cd ..
-# -> produces rust-vrf/contract.polkavm
-
-# Compile Solidity contract
-npm run build:sol
-# -> produces contracts_PVMLottery_sol_PVMLottery.polkavm
-```
-
-### 3. Deploy to Westend Asset Hub
-
-```bash
-# Deploy everything with one command:
+# 3. Deploy (uses pre-built binaries)
 ./scripts/deploy.sh
+
+# 4. Open the frontend
+open frontend/index.html
 ```
-
-Or manually:
-```bash
-export ETH_RPC_URL="https://westend-asset-hub-eth-rpc.polkadot.io"
-
-# Deploy Rust VRF
-RUST_VRF=$(cast send --account dev-account --create \
-  "$(xxd -p -c 99999 rust-vrf/contract.polkavm)" \
-  --json | jq -r .contractAddress)
-
-# Compile and deploy Solidity Lottery
-npx @parity/revive --bin contracts/PVMLottery.sol
-
-TICKET_PRICE="10000000000000000"  # 0.01 WND
-ARGS=$(cast abi-encode "constructor(address,uint256)" $RUST_VRF $TICKET_PRICE)
-
-LOTTERY=$(cast send --account dev-account --create \
-  "$(xxd -p -c 99999 contracts_PVMLottery_sol_PVMLottery.polkavm)${ARGS:2}" \
-  --json | jq -r .contractAddress)
-
-echo "Rust VRF: $RUST_VRF"
-echo "Lottery: $LOTTERY"
-```
-
-### 4. Interact
-
-```bash
-# Buy a ticket
-cast send --account dev-account --value 10000000000000000 $LOTTERY "buyTicket()"
-
-# Check current round
-cast call $LOTTERY "getCurrentRound() returns (uint256, uint256, uint256, bool)"
-
-# Draw winner (owner only)
-cast send --account dev-account $LOTTERY "drawWinner()"
-
-# Gas comparison: Rust vs Solidity
-cast estimate $LOTTERY "generateRandomRust(uint256)" 42
-cast estimate $LOTTERY "generateRandomSolidity(uint256)" 42
-```
-
-### 5. Frontend Demo
-
-1. Open `frontend/index.html` in a browser
-2. Connect MetaMask (switch to Westend Asset Hub network)
-3. Enter the deployed contract addresses
-4. Buy tickets, draw winners, and compare gas costs
 
 ## How It Works
 

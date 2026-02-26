@@ -15,5 +15,5 @@ lto = "fat"
 codegen-units = 1
 
 [dependencies]
-polkavm-derive = { version = "0.26" }
-uapi = { package = "pallet-revive-uapi", version = "0.6", default-features = false }
+polkavm-derive = { version = "0.31" }
+uapi = { package = "pallet-revive-uapi", version = "0.10", default-features = false }

@@ -1,8 +1,9 @@
 # Rust
 rust-vrf/target/
 
-# Compiled artifacts
+# Compiled artifacts (except pre-built in build/)
 *.polkavm
+!build/*.polkavm
 artifacts/
 cache/
 
