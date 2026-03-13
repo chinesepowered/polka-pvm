@@ -8,145 +8,120 @@ Pre-built contract binaries are included in `build/` so you do **not** need Rust
 
 ## Prerequisites
 
-You only need two things:
+1. **Node.js** (v18+) — you probably already have it
+2. **A private key** with testnet WND tokens
+3. **Testnet WND tokens** — [faucet.polkadot.io/westend](https://faucet.polkadot.io/westend)
 
-1. **Foundry** (for `cast` CLI) - [getfoundry.sh](https://getfoundry.sh)
-2. **Testnet WND tokens** - [faucet.polkadot.io/westend](https://faucet.polkadot.io/westend)
-
-### Install Foundry
-
-**macOS / Linux:**
-```bash
-curl -L https://foundry.paradigm.xyz | bash
-foundryup
-```
-
-**Windows (PowerShell):**
-```powershell
-# Option A: Use the installer
-irm https://foundry.paradigm.xyz | iex
-foundryup
-
-# Option B: Use WSL (recommended — the deploy script is bash)
-wsl --install
-# Then inside WSL, follow the macOS/Linux instructions
-```
-
-> **Windows note:** The `deploy.sh` script is a bash script. On Windows, either use **WSL** (recommended), **Git Bash**, or deploy manually using the commands in the "Manual Deploy" section below.
-
-### Verify Foundry is installed
+### Install dependencies
 
 ```bash
-cast --version
-# Should print: cast 0.x.x
+npm install
 ```
+
+This installs `ethers.js` (for deployment) and the Revive compiler (only needed if rebuilding Solidity).
 
 ---
 
 ## Step 1: Set Up Your Wallet
 
-Generate or import a private key into Foundry's keystore:
+You need a private key with testnet funds. If you don't have one:
 
 ```bash
-# Import an existing private key
-cast wallet import dev-account --private-key <YOUR_PRIVATE_KEY>
-```
-
-Or generate a fresh one:
-```bash
-cast wallet new
-# Save the private key and address it outputs
-cast wallet import dev-account --private-key <PRIVATE_KEY_FROM_ABOVE>
+# Generate a new wallet (using Node.js)
+node -e "const w = require('ethers').Wallet.createRandom(); console.log('Address:', w.address); console.log('Private key:', w.privateKey)"
 ```
 
 ### Fund it with testnet WND
 
 1. Go to [faucet.polkadot.io/westend](https://faucet.polkadot.io/westend)
-2. Paste your address (the `0x...` Ethereum-style address)
-3. Wait for the tokens to arrive (~30 seconds)
+2. Paste your `0x...` address
+3. Wait ~30 seconds for tokens to arrive
 
-Verify:
+### Save your key
+
+Create a `.env` file (already in `.gitignore`):
+
 ```bash
-export ETH_RPC_URL="https://westend-asset-hub-eth-rpc.polkadot.io"
-cast balance <YOUR_ADDRESS>
+echo "PRIVATE_KEY=0xYOUR_PRIVATE_KEY_HERE" > .env
 ```
 
 ---
 
 ## Step 2: Deploy
 
-### Option A: One-command deploy (macOS/Linux/WSL)
+### One command
 
 ```bash
-./scripts/deploy.sh
+npm run deploy
+```
+
+Or without `.env`:
+
+```bash
+PRIVATE_KEY=0x... npm run deploy
 ```
 
 This will:
-1. Deploy the Rust VRF contract (from `build/vrf.polkavm`)
-2. Deploy the Solidity Lottery contract (from `build/PVMLottery.polkavm`)
-3. Print both contract addresses
+1. Deploy the Rust VRF contract (`build/vrf.polkavm`)
+2. Deploy the Solidity Lottery contract (`build/PVMLottery.polkavm`)
+3. Run a gas comparison smoke test
+4. Save addresses to `.deploy-addresses.json`
 
-### Option B: Manual deploy (any OS, including Windows PowerShell)
+### Example output
 
-```bash
-# Set the RPC endpoint
-export ETH_RPC_URL="https://westend-asset-hub-eth-rpc.polkadot.io"
-
-# 1. Deploy the Rust VRF contract
-cast send --account dev-account --create "$(xxd -p -c 99999 build/vrf.polkavm)" --json
-# Note the "contractAddress" from the output. Example: 0xABC123...
 ```
+============================================
+  PVM Lottery Deployment (Node.js)
+  Network:  https://westend-asset-hub-eth-rpc.polkadot.io
+  Deployer: 0x1234...
+  Ticket:   10000000000000000 wei (0.01 WND)
+============================================
 
-```bash
-# 2. Deploy the Solidity Lottery contract
-# Replace <VRF_ADDRESS> with the address from step 1
-TICKET_PRICE="10000000000000000"
-ARGS=$(cast abi-encode "constructor(address,uint256)" <VRF_ADDRESS> $TICKET_PRICE)
-cast send --account dev-account --create "$(xxd -p -c 99999 build/PVMLottery.polkavm)${ARGS:2}" --json
-# Note the "contractAddress". Example: 0xDEF456...
-```
+[1/2] Deploying Rust VRF contract...
+  -> Rust VRF deployed at: 0xABC...
 
-**Windows PowerShell (no xxd):**
+[2/2] Deploying Lottery contract...
+  -> Lottery deployed at: 0xDEF...
 
-If you don't have `xxd`, use Python instead:
-```powershell
-# Convert binary to hex
-$vrfHex = (python -c "print(open('build/vrf.polkavm','rb').read().hex())")
-cast send --account dev-account --create $vrfHex --json
-
-# Then for the Lottery:
-$lotteryHex = (python -c "print(open('build/PVMLottery.polkavm','rb').read().hex())")
-$args = cast abi-encode "constructor(address,uint256)" <VRF_ADDRESS> 10000000000000000
-$argsNoPrefix = $args.Substring(2)
-cast send --account dev-account --create "$lotteryHex$argsNoPrefix" --json
-```
-
-### Save your addresses
-
-Write down both addresses. You'll need them for the frontend:
-```
-Rust VRF:  0x________________
-Lottery:   0x________________
+[test] Running gas comparison...
+  Rust VRF gas:     12345
+  Solidity gas:     67890
+  Rust saves:       81.8% gas
 ```
 
 ---
 
 ## Step 3: Test via CLI
 
+After deploying, you can interact using Node.js:
+
+```bash
+node -e "
+const { ethers } = require('ethers');
+const provider = new ethers.JsonRpcProvider('https://westend-asset-hub-eth-rpc.polkadot.io');
+const addrs = require('./.deploy-addresses.json');
+const abi = ['function getCurrentRound() view returns (uint256, uint256, uint256, bool)'];
+const lottery = new ethers.Contract(addrs.lotteryAddress, abi, provider);
+lottery.getCurrentRound().then(r => console.log('Round:', r.toString()));
+"
+```
+
+Or if you have Foundry installed:
+
 ```bash
 export ETH_RPC_URL="https://westend-asset-hub-eth-rpc.polkadot.io"
 LOTTERY=<YOUR_LOTTERY_ADDRESS>
 
-# Buy a ticket (costs 0.01 WND)
+# Buy a ticket
 cast send --account dev-account --value 10000000000000000 $LOTTERY "buyTicket()"
 
-# Check current round info
+# Check current round
 cast call $LOTTERY "getCurrentRound() returns (uint256, uint256, uint256, bool)"
 
 # Draw the winner (owner only)
 cast send --account dev-account $LOTTERY "drawWinner()"
 
-# Gas comparison: this is the money shot for the demo!
+# Gas comparison
 cast estimate $LOTTERY "generateRandomRust(uint256)" 42
 cast estimate $LOTTERY "generateRandomSolidity(uint256)" 42
 ```
@@ -182,6 +157,31 @@ cast estimate $LOTTERY "generateRandomSolidity(uint256)" 42
 
 ---
 
+## Alternative: Deploy with Foundry
+
+If you prefer Foundry (`cast`) over Node.js:
+
+### Install Foundry
+
+```bash
+# macOS / Linux
+curl -L https://foundry.paradigm.xyz | bash
+foundryup
+
+# Windows PowerShell
+irm https://foundry.paradigm.xyz | iex
+foundryup
+```
+
+### Deploy
+
+```bash
+cast wallet import dev-account --private-key <YOUR_PRIVATE_KEY>
+./scripts/deploy.sh
+```
+
+---
+
 ## Rebuilding from Source (optional)
 
 Only needed if you want to modify the contracts.
@@ -189,12 +189,10 @@ Only needed if you want to modify the contracts.
 ### Rust VRF contract
 
 ```bash
-# Install Rust + polkatool
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 rustup component add rust-src
 cargo install polkatool
 
-# Build
 cd rust-vrf && make
 # Output: rust-vrf/contract.polkavm
 ```
@@ -202,10 +200,7 @@ cd rust-vrf && make
 ### Solidity Lottery contract
 
 ```bash
-# Install Node.js dependencies (pins compatible solc version)
 npm install
-
-# Build
 npm run build:sol
 # Output: contracts_PVMLottery_sol_PVMLottery.polkavm
 ```
@@ -214,10 +209,10 @@ npm run build:sol
 
 ## Troubleshooting
 
-**"cast: command not found"**
-Run `foundryup` to install Foundry, then restart your terminal.
+**"PRIVATE_KEY environment variable is required"**
+Create a `.env` file: `echo "PRIVATE_KEY=0x..." > .env`
 
-**"insufficient funds"**
+**"insufficient funds" / balance is 0**
 Get WND from the [faucet](https://faucet.polkadot.io/westend). Each request gives enough for many deployments.
 
 **"Only owner" when drawing winner**
@@ -225,6 +220,3 @@ The `drawWinner()` function can only be called by the account that deployed the 
 
 **MetaMask doesn't connect**
 Make sure you're on the Westend Asset Hub network (chain ID 420420421). The frontend will try to add it automatically.
-
-**xxd not available (Windows)**
-Use the Python one-liner shown in the manual deploy section, or install xxd via `choco install vim` (xxd comes with vim).
