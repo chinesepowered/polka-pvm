@@ -15,7 +15,7 @@ Pre-built contract binaries are included in `build/` so you do **not** need Rust
 ### Install dependencies
 
 ```bash
-npm install
+pnpm install
 ```
 
 This installs `ethers.js` (for deployment) and the Revive compiler (only needed if rebuilding Solidity).
@@ -52,13 +52,13 @@ echo "PRIVATE_KEY=0xYOUR_PRIVATE_KEY_HERE" > .env
 ### One command
 
 ```bash
-npm run deploy
+pnpm run deploy
 ```
 
 Or without `.env`:
 
 ```bash
-PRIVATE_KEY=0x... npm run deploy
+PRIVATE_KEY=0x... pnpm run deploy
 ```
 
 This will:
@@ -200,8 +200,8 @@ cd rust-vrf && make
 ### Solidity Lottery contract
 
 ```bash
-npm install
-npm run build:sol
+pnpm install
+pnpm run build:sol
 # Output: contracts_PVMLottery_sol_PVMLottery.polkavm
 ```
 

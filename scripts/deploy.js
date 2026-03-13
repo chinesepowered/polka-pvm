@@ -4,11 +4,11 @@
 // ==============================================================
 //
 // Usage:
-//   PRIVATE_KEY=0x... npm run deploy
+//   PRIVATE_KEY=0x... pnpm run deploy
 //
 // Or with env file:
 //   echo 'PRIVATE_KEY=0x...' > .env   (already in .gitignore)
-//   npm run deploy
+//   pnpm run deploy
 //
 // Options (env vars):
 //   PRIVATE_KEY    - Required. Your deployer private key (0x-prefixed)
@@ -62,7 +62,7 @@ async function main() {
     console.error("Error: PRIVATE_KEY environment variable is required.");
     console.error("");
     console.error("Usage:");
-    console.error("  PRIVATE_KEY=0x... npm run deploy");
+    console.error("  PRIVATE_KEY=0x... pnpm run deploy");
     console.error("");
     console.error("Or create a .env file:");
     console.error('  echo "PRIVATE_KEY=0x..." > .env');
@@ -101,7 +101,7 @@ async function main() {
   }
   if (!fs.existsSync(lotteryBin)) {
     console.error(`  Lottery binary not found: ${lotteryBin}`);
-    console.error("  Run: npm run build:sol");
+    console.error("  Run: pnpm run build:sol");
     process.exit(1);
   }
 

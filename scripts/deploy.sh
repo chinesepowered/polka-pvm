@@ -11,7 +11,7 @@ set -e
 #
 # Pre-built binaries are in build/. To rebuild from source you also need:
 #   - Rust + polkatool: cargo install polkatool
-#   - Revive compiler: npm install (run from repo root)
+#   - Revive compiler: pnpm install (run from repo root)
 #
 # Setup:
 #   cast wallet import dev-account --private-key <YOUR_PRIVATE_KEY>
