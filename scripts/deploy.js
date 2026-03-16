@@ -71,7 +71,14 @@ async function main() {
 
   // Connect
   const provider = new ethers.JsonRpcProvider(RPC_URL);
+  const network = await provider.getNetwork();
+  const chainId = Number(network.chainId);
+  console.log(`  Chain ID: ${chainId}`);
   const wallet = new ethers.Wallet(privateKey, provider);
+
+  // Get current nonce - use pending to get the latest
+  let nonce = await provider.getTransactionCount(wallet.address, "pending");
+  console.log(`  Using pending nonce: ${nonce}`);
 
   console.log("============================================");
   console.log("  PVM Lottery Deployment (Node.js)");
@@ -87,6 +94,10 @@ async function main() {
     console.error("  No funds! Get WND from https://faucet.polkadot.io/westend");
     process.exit(1);
   }
+
+  // Get gas info
+  const feeData = await provider.getFeeData();
+  console.log(`  Gas price: ${feeData.gasPrice} wei`);
   console.log("");
 
   // Locate binaries
@@ -110,7 +121,13 @@ async function main() {
   const vrfBytecode = "0x" + fs.readFileSync(vrfBin).toString("hex");
   console.log(`  Binary: ${vrfBin} (${fs.statSync(vrfBin).size} bytes)`);
 
-  const vrfTx = await wallet.sendTransaction({ data: vrfBytecode });
+  // Use EIP-1559 transaction (type 2)
+  const vrfTx = await wallet.sendTransaction({
+    data: vrfBytecode,
+    gasLimit: 50000000,
+    nonce: nonce,
+  });
+  nonce++;
   console.log(`  TX: ${vrfTx.hash}`);
   const vrfReceipt = await vrfTx.wait();
   const vrfAddress = vrfReceipt.contractAddress;
@@ -129,6 +146,8 @@ async function main() {
 
   const lotteryTx = await wallet.sendTransaction({
     data: "0x" + lotteryBytecode + constructorArgs,
+    gasLimit: 50000000,
+    nonce: nonce,
   });
   console.log(`  TX: ${lotteryTx.hash}`);
   const lotteryReceipt = await lotteryTx.wait();
