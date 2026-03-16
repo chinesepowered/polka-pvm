@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // ==============================================================
-// PVM Lottery — Deploy to Westend Asset Hub (Node.js / ethers.js)
+// PVM Lottery — Deploy to Polkadot Hub Testnet (Node.js / ethers.js)
 // ==============================================================
 //
 // Usage:
@@ -12,7 +12,7 @@
 //
 // Options (env vars):
 //   PRIVATE_KEY    - Required. Your deployer private key (0x-prefixed)
-//   RPC_URL        - RPC endpoint (default: Westend Asset Hub)
+//   RPC_URL        - RPC endpoint (default: Polkadot Hub Testnet)
 //   TICKET_PRICE   - In wei (default: 10000000000000000 = 0.01 WND)
 // ==============================================================
 
@@ -23,7 +23,7 @@ const path = require("path");
 // --- Config ---
 const RPC_URL =
   process.env.RPC_URL ||
-  "https://westend-asset-hub-eth-rpc.polkadot.io";
+  "https://services.polkadothub-rpc.com/testnet";
 const TICKET_PRICE = process.env.TICKET_PRICE || "10000000000000000"; // 0.01 WND
 
 // --- Load .env if present (simple, no dotenv dependency) ---
@@ -76,10 +76,6 @@ async function main() {
   console.log(`  Chain ID: ${chainId}`);
   const wallet = new ethers.Wallet(privateKey, provider);
 
-  // Get current nonce - use pending to get the latest
-  let nonce = await provider.getTransactionCount(wallet.address, "pending");
-  console.log(`  Using pending nonce: ${nonce}`);
-
   console.log("============================================");
   console.log("  PVM Lottery Deployment (Node.js)");
   console.log(`  Network:  ${RPC_URL}`);
@@ -95,9 +91,6 @@ async function main() {
     process.exit(1);
   }
 
-  // Get gas info
-  const feeData = await provider.getFeeData();
-  console.log(`  Gas price: ${feeData.gasPrice} wei`);
   console.log("");
 
   // Locate binaries
@@ -121,13 +114,10 @@ async function main() {
   const vrfBytecode = "0x" + fs.readFileSync(vrfBin).toString("hex");
   console.log(`  Binary: ${vrfBin} (${fs.statSync(vrfBin).size} bytes)`);
 
-  // Use EIP-1559 transaction (type 2)
   const vrfTx = await wallet.sendTransaction({
     data: vrfBytecode,
     gasLimit: 50000000,
-    nonce: nonce,
   });
-  nonce++;
   console.log(`  TX: ${vrfTx.hash}`);
   const vrfReceipt = await vrfTx.wait();
   const vrfAddress = vrfReceipt.contractAddress;
@@ -147,7 +137,6 @@ async function main() {
   const lotteryTx = await wallet.sendTransaction({
     data: "0x" + lotteryBytecode + constructorArgs,
     gasLimit: 50000000,
-    nonce: nonce,
   });
   console.log(`  TX: ${lotteryTx.hash}`);
   const lotteryReceipt = await lotteryTx.wait();

@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PVM Lottery — Rust-Powered Randomness on Polkadot</title>
-    <script src="https://cdn.ethers.io/lib/ethers-5.7.2.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -166,9 +166,9 @@
         <div class="card">
             <h2>Contract Addresses</h2>
             <label style="font-size:0.85rem;color:#888;">Lottery Contract:</label>
-            <input id="lotteryAddr" class="address-input" placeholder="0x..." value="">
+            <input id="lotteryAddr" class="address-input" placeholder="0x..." value="0x6E458ad4e0984eC8C960F3965a7090Ff3483Ec7b">
             <label style="font-size:0.85rem;color:#888;">Rust VRF Contract:</label>
-            <input id="vrfAddr" class="address-input" placeholder="0x..." value="">
+            <input id="vrfAddr" class="address-input" placeholder="0x..." value="0x5Ff5ec2BF407E2d052Bd332d46dC7FF9902C1318">
             <button class="btn btn-secondary" onclick="loadContracts()" style="margin-top:0.5rem;">Load Contracts</button>
         </div>
 
@@ -186,12 +186,12 @@
                 </div>
                 <div class="stat">
                     <div class="stat-value" id="prizePool">—</div>
-                    <div class="stat-label">Prize Pool (WND)</div>
+                    <div class="stat-label">Prize Pool (PAS)</div>
                 </div>
             </div>
             <div class="row">
                 <button class="btn btn-success" onclick="buyTicket()" id="buyBtn" disabled>
-                    Buy Ticket (0.01 WND)
+                    Buy Ticket (0.01 PAS)
                 </button>
                 <button class="btn btn-primary" onclick="drawWinner()" id="drawBtn" disabled>
                     Draw Winner (Owner)
@@ -261,13 +261,13 @@
     ];
 
     // ==========================================
-    // Westend Asset Hub network config
+    // Polkadot Hub Testnet network config
     // ==========================================
     const NETWORK = {
-        chainId: "0x190F1B45", // 420420421 (Westend Asset Hub)
-        chainName: "Westend Asset Hub",
-        rpcUrls: ["https://westend-asset-hub-eth-rpc.polkadot.io"],
-        nativeCurrency: { name: "Westend", symbol: "WND", decimals: 18 }
+        chainId: "0x190f1b41", // 420420417 (Polkadot Hub Testnet)
+        chainName: "Polkadot Hub Testnet",
+        rpcUrls: ["https://services.polkadothub-rpc.com/testnet"],
+        nativeCurrency: { name: "Paseo", symbol: "PAS", decimals: 18 }
     };
 
     let provider, signer, lotteryContract, ticketPrice;
@@ -282,7 +282,7 @@
         }
         try {
             await window.ethereum.request({ method: "eth_requestAccounts" });
-            provider = new ethers.providers.Web3Provider(window.ethereum);
+            provider = new ethers.providers.Web3Provider(window.ethereum, "any");
             signer = provider.getSigner();
             const address = await signer.getAddress();
             const shortAddr = address.slice(0, 6) + "..." + address.slice(-4);
@@ -291,19 +291,23 @@
             document.getElementById("connectBtn").textContent = "Connected";
             log(`Wallet connected: ${shortAddr}`, "success");
 
-            // Try switching to Westend Asset Hub
+            // Switch to Polkadot Hub Testnet
+            try {
+                await window.ethereum.request({
+                    method: "wallet_addEthereumChain",
+                    params: [NETWORK]
+                });
+            } catch (addErr) {
+                log("Could not add network: " + addErr.message, "error");
+            }
             try {
                 await window.ethereum.request({
                     method: "wallet_switchEthereumChain",
                     params: [{ chainId: NETWORK.chainId }]
                 });
+                log("Switched to Polkadot Hub Testnet", "success");
             } catch (switchErr) {
-                if (switchErr.code === 4902) {
-                    await window.ethereum.request({
-                        method: "wallet_addEthereumChain",
-                        params: [NETWORK]
-                    });
-                }
+                log("Please switch to Polkadot Hub Testnet (chain 420420417) manually in MetaMask", "error");
             }
         } catch (err) {
             log("Failed to connect wallet: " + err.message, "error");
@@ -328,7 +332,7 @@
             lotteryContract = new ethers.Contract(lotteryAddr, LOTTERY_ABI, signer);
             ticketPrice = await lotteryContract.ticketPrice();
             const priceWnd = ethers.utils.formatEther(ticketPrice);
-            document.getElementById("buyBtn").textContent = `Buy Ticket (${priceWnd} WND)`;
+            document.getElementById("buyBtn").textContent = `Buy Ticket (${priceWnd} PAS)`;
             document.getElementById("buyBtn").disabled = false;
             document.getElementById("drawBtn").disabled = false;
             document.getElementById("gasBtn").disabled = false;
@@ -362,7 +366,7 @@
         if (!lotteryContract || !ticketPrice) return;
         try {
             log("Buying ticket...", "info");
-            const tx = await lotteryContract.buyTicket({ value: ticketPrice });
+            const tx = await lotteryContract.buyTicket({ value: ticketPrice, gasLimit: 150000 });
             log(`TX submitted: ${tx.hash}`, "info");
             const receipt = await tx.wait();
             log(`Ticket purchased! Gas used: ${receipt.gasUsed.toString()}`, "success");
@@ -379,7 +383,7 @@
         if (!lotteryContract) return;
         try {
             log("Drawing winner using Rust VRF...", "info");
-            const tx = await lotteryContract.drawWinner();
+            const tx = await lotteryContract.drawWinner({ gasLimit: 300000 });
             log(`TX submitted: ${tx.hash}`, "info");
             const receipt = await tx.wait();
             // Parse WinnerDrawn event
@@ -390,7 +394,7 @@
                     if (parsed.name === "WinnerDrawn") {
                         const winner = parsed.args.winner;
                         const prize = ethers.utils.formatEther(parsed.args.prize);
-                        log(`Winner: ${winner} — Prize: ${prize} WND`, "success");
+                        log(`Winner: ${winner} — Prize: ${prize} PAS`, "success");
                     }
                 } catch (_) {}
             }
