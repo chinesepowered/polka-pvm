@@ -5,10 +5,12 @@
   "description": "PVM Lottery — Rust-powered random number generation on Polkadot PolkaVM",
   "scripts": {
     "build:sol": "npx @parity/revive --bin contracts/PVMLottery.sol",
-    "build:rust": "cd rust-vrf && make"
+    "build:rust": "cd rust-vrf && make",
+    "deploy": "node scripts/deploy.js"
   },
   "dependencies": {
-    "@parity/revive": "latest",
+    "@parity/resolc": "^1.0.0",
+    "ethers": "^6.13.0",
     "solc": "0.8.28"
   },
   "overrides": {

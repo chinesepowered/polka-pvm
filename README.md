@@ -114,7 +114,3 @@ This project demonstrates:
 | Chain ID | `420420421` |
 | Currency | WND |
 | Faucet | [faucet.polkadot.io/westend](https://faucet.polkadot.io/westend) |
-
-## License
-
-MIT

@@ -11,7 +11,7 @@ set -e
 #
 # Pre-built binaries are in build/. To rebuild from source you also need:
 #   - Rust + polkatool: cargo install polkatool
-#   - Revive compiler: npm install (run from repo root)
+#   - Revive compiler: pnpm install (run from repo root)
 #
 # Setup:
 #   cast wallet import dev-account --private-key <YOUR_PRIVATE_KEY>
@@ -22,7 +22,7 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-export ETH_RPC_URL="${ETH_RPC_URL:-https://westend-asset-hub-eth-rpc.polkadot.io}"
+export ETH_RPC_URL="${ETH_RPC_URL:-https://services.polkadothub-rpc.com/testnet}"
 ACCOUNT="${ACCOUNT:-dev-account}"
 TICKET_PRICE="${TICKET_PRICE:-10000000000000000}" # 0.01 WND in wei
 

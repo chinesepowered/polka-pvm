@@ -10,10 +10,12 @@ cache/
 # Node
 node_modules/
 package-lock.json
+pnpm-lock.yaml
 
 # Environment
 .env
 .env.local
+.deploy-addresses.json
 
 # OS
 .DS_Store
